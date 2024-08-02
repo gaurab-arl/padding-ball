@@ -18,25 +18,34 @@ const int paddleSpeed = 50;
 const int ballRadius = 10;
 int ballSpeed = 5;
 
+// Bomb dimensions
+const int bombRadius = 10;
+int bombX, bombY;  // Bomb position
+int bombSpeed = 3; // Initial speed of the bomb
+int bombDirectionX = 1; // Direction of bomb's horizontal movement
+
 // Function prototypes
 void drawPaddle(int x);
 void drawBall(int x, int y, bool isHovered);
+void drawBomb(int x, int y, bool isHovered);
 void displayScore(int score, int level, int highScore);
 void showMainMenu(int highScore);
 void drawBorder();
 void saveHighScore(int highScore);
 int loadHighScore();
-void playHitSound(); // Function prototype for sound effect
+void playHitSound(); 
+void playHitSound2(); 
 
 int main()
 {
     int gr = DETECT, gm;
-    initgraph(&gr, &gm, (char*)""); // Use nullptr instead of "" for path
+    initgraph(&gr, &gm, (char*)""); // Initialize graphics mode
 
+    // Initialize game variables
     int paddleX = screenWidth / 2 - paddleWidth / 2;
     int ballX = rand() % (screenWidth - 2 * ballRadius) + ballRadius;
     int ballY = ballRadius;
-    int ballDirectionX = 1; // 1 for right, -1 for left
+    int ballDirectionX = 1; // Direction of ball movement
     int score = 0;
     int level = 1;
     int consecutiveHits = 0;
@@ -59,6 +68,12 @@ int main()
         return 0; // Quit the game if 'q' or 'Q' is pressed
     }
 
+    // Initialize bomb position and direction
+    bombX = rand() % (screenWidth - 2 * bombRadius) + bombRadius;
+    bombY = 0; // Start at the top of the screen
+    bombDirectionX = (rand() % 2 == 0) ? 1 : -1; // Random horizontal direction
+    bombSpeed = 3 + level; // Initial bomb speed
+
     while (true) {
         // Clear screen
         cleardevice();
@@ -72,6 +87,9 @@ int main()
         // Draw ball with hover effect
         drawBall(ballX, ballY, isHovered);
 
+        // Draw bomb with hover effect
+        drawBomb(bombX, bombY, isHovered);
+
         // Display score and level
         displayScore(score, level, highScore);
 
@@ -79,21 +97,25 @@ int main()
         ballY += ballSpeed;
         ballX += ballDirectionX * ballSpeed;
 
+        // Move bomb
+        bombX += bombDirectionX * bombSpeed;
+        bombY += bombSpeed;
+
         // Ball and paddle collision
         if (ballY + ballRadius >= screenHeight - paddleHeight &&
             ballX >= paddleX && ballX <= paddleX + paddleWidth) {
-            ballY = ballRadius;
+            ballY = ballRadius; // Reset ball position
             ballX = rand() % (screenWidth - 2 * ballRadius) + ballRadius;
             score += 1 + consecutiveHits; // Award bonus points for consecutive hits
             consecutiveHits++;
             isHovered = true; // Activate hover effect
+            playHitSound(); // Play hit sound
 
-            // Play the hit sound effect
-            playHitSound();
-
+            // Increase level and ball speed every 5 points
             if (score % 5 == 0) {
                 level++;
-                ballSpeed += 2; // Increase speed each level
+                ballSpeed += 2; // Increase ball speed
+                bombSpeed = 3 + level; // Increase bomb speed based on level
             }
         } else if (ballY - ballRadius > screenHeight) {
             // Ball missed
@@ -110,7 +132,32 @@ int main()
 
         // Ball hits the left or right wall
         if (ballX - ballRadius <= 0 || ballX + ballRadius >= screenWidth) {
-            ballDirectionX *= -1;
+            ballDirectionX *= -1; // Reverse ball direction
+        }
+
+        // Bomb hits the left or right wall
+        if (bombX - bombRadius <= 0 || bombX + bombRadius >= screenWidth) {
+            bombDirectionX *= -1; // Reverse bomb horizontal direction
+        }
+
+        // Bomb and paddle collision
+        if (bombY + bombRadius >= screenHeight - paddleHeight &&
+            bombX >= paddleX && bombX <= paddleX + paddleWidth) {
+            outtextxy(screenWidth / 2 - 50, screenHeight / 2, "Bomb Hit! Game Over!");
+            if (score > highScore) {
+                highScore = score; // Update highest score
+                saveHighScore(highScore); // Save the new high score to file
+            }
+            getch();
+            break;
+        }
+
+        // Bomb falls off the screen
+        if (bombY - bombRadius > screenHeight) {
+            bombX = rand() % (screenWidth - 2 * bombRadius) + bombRadius; // Reset bomb position
+            bombY = 0; // Start at the top of the screen
+            bombDirectionX = (rand() % 2 == 0) ? 1 : -1; // Random horizontal direction
+            bombSpeed = 3 + level; // Increase bomb speed based on level
         }
 
         // Paddle controls
@@ -137,7 +184,7 @@ int main()
         delay(30);
     }
 
-    closegraph();
+    closegraph(); // Close graphics mode
     return 0;
 }
 
@@ -155,6 +202,13 @@ void drawBall(int x, int y, bool isHovered)
     fillellipse(x, y, ballRadius, ballRadius);
 }
 
+// Draw the bomb with hover effect
+void drawBomb(int x, int y, bool isHovered)
+{
+    setfillstyle(SOLID_FILL, isHovered ? BLUE : GREEN); // Change color on hover
+    fillellipse(x, y, bombRadius, bombRadius);
+}
+
 // Display the score and level
 void displayScore(int score, int level, int highScore)
 {
@@ -167,9 +221,9 @@ void displayScore(int score, int level, int highScore)
 // Show the main menu
 void showMainMenu(int highScore)
 {
-    cleardevice();
+    cleardevice(); // Clear the screen
     settextstyle(BOLD_FONT, HORIZ_DIR, 4);
-    setcolor(13);
+    setcolor(13); // Set color for text
     outtextxy(screenWidth / 2 - 160, screenHeight / 2 - 60, "Welcome to Pong Game");
     outtextxy(screenWidth / 2 - 160, screenHeight / 2, "Press any key to start");
     outtextxy(screenWidth / 2 - 160, screenHeight / 2 + 60, "Press 'Q' to quit");
@@ -183,7 +237,7 @@ void showMainMenu(int highScore)
 void drawBorder()
 {
     setcolor(WHITE);
-    rectangle(0, 0, screenWidth - 1, screenHeight - 1);
+    rectangle(0, 0, screenWidth - 1, screenHeight - 1); // Draw border
 }
 
 // Save the high score to a file
@@ -191,7 +245,7 @@ void saveHighScore(int highScore)
 {
     FILE* file = fopen("highscore.txt", "w");
     if (file != NULL) {
-        fprintf(file, "%d", highScore);
+        fprintf(file, "%d", highScore); // Write high score to file
         fclose(file);
     }
 }
@@ -202,7 +256,7 @@ int loadHighScore()
     int highScore = 0;
     FILE* file = fopen("highscore.txt", "r");
     if (file != NULL) {
-        fscanf(file, "%d", &highScore);
+        fscanf(file, "%d", &highScore); // Read high score from file
         fclose(file);
     }
     return highScore;
@@ -212,4 +266,10 @@ int loadHighScore()
 void playHitSound()
 {
     Beep(1000, 100); // Play a sound at 1000 Hz for 100 milliseconds
+}
+
+// Play a different sound (not used in this version of the game)
+void playHitSound2()
+{
+    Beep(650, 100); // Play a sound at 650 Hz for 100 milliseconds
 }
