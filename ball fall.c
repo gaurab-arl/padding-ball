@@ -2,6 +2,7 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>  // Include for file operations
 
 // Screen dimensions
 const int screenWidth = 640;
@@ -9,7 +10,7 @@ const int screenHeight = 480;
 
 // Paddle dimensions
 const int paddleWidth = 100;
-const int paddleHeight = 20;
+const int paddleHeight = 10;
 const int paddleSpeed = 50;
 
 // Ball dimensions
@@ -19,14 +20,16 @@ int ballSpeed = 5;
 // Function prototypes
 void drawPaddle(int x);
 void drawBall(int x, int y, bool isHovered);
-void displayScore(int score, int level);
-void showMainMenu();
+void displayScore(int score, int level, int highScore);
+void showMainMenu(int highScore);
 void drawBorder();
+void saveHighScore(int highScore);
+int loadHighScore();
 
 int main()
 {
-    int gd = DETECT, gm;
-    initgraph(&gd, &gm, "");
+    int gr = DETECT, gm;
+    initgraph(&gr, &gm, (char*)""); // Use nullptr instead of "" for path
 
     int paddleX = screenWidth / 2 - paddleWidth / 2;
     int ballX = rand() % (screenWidth - 2 * ballRadius) + ballRadius;
@@ -41,11 +44,18 @@ int main()
     // Seed random number generator
     srand(time(0));
 
+    // Load the highest score from file
+    int highScore = loadHighScore();
+
     // Display the main menu
-    showMainMenu();
+    showMainMenu(highScore);
 
     // Wait for a key press to start the game
-    getch();
+    ch = getch();
+    if (ch == 'q' || ch == 'Q') {
+        closegraph();
+        return 0; // Quit the game if 'q' or 'Q' is pressed
+    }
 
     while (true) {
         // Clear screen
@@ -61,7 +71,7 @@ int main()
         drawBall(ballX, ballY, isHovered);
 
         // Display score and level
-        displayScore(score, level);
+        displayScore(score, level, highScore);
 
         // Move ball
         ballY += ballSpeed;
@@ -76,13 +86,17 @@ int main()
             consecutiveHits++;
             isHovered = true; // Activate hover effect
 
-            if (score % 10 == 0) {
+            if (score % 5 == 0) {
                 level++;
                 ballSpeed += 2; // Increase speed each level
             }
         } else if (ballY - ballRadius > screenHeight) {
             // Ball missed
             outtextxy(screenWidth / 2 - 50, screenHeight / 2, "Game Over!");
+            if (score > highScore) {
+                highScore = score; // Update highest score
+                saveHighScore(highScore); // Save the new high score to file
+            }
             getch();
             break;
         } else {
@@ -104,6 +118,13 @@ int main()
             if (ch == 77) { // Right arrow key
                 paddleX += paddleSpeed;
                 if (paddleX > screenWidth - paddleWidth) paddleX = screenWidth - paddleWidth;
+            }
+            if (ch == 'q' || ch == 'Q') { // Quit game if 'q' or 'Q' is pressed
+                if (score > highScore) {
+                    highScore = score; // Update highest score
+                    saveHighScore(highScore); // Save the new high score to file
+                }
+                break;
             }
         }
 
@@ -130,21 +151,27 @@ void drawBall(int x, int y, bool isHovered)
 }
 
 // Display the score and level
-void displayScore(int score, int level)
+void displayScore(int score, int level, int highScore)
 {
     settextstyle(BOLD_FONT, HORIZ_DIR, 3); // Set larger font size
-    char scoreText[30];
-    sprintf(scoreText, "Score: %d  Level: %d", score, level);
+    char scoreText[50];
+    sprintf(scoreText, "Score: %d  Level: %d  High Score: %d", score, level, highScore);
     outtextxy(20, 20, scoreText);
 }
 
 // Show the main menu
-void showMainMenu()
+void showMainMenu(int highScore)
 {
     cleardevice();
     settextstyle(BOLD_FONT, HORIZ_DIR, 4);
-    outtextxy(screenWidth / 2 - 160, screenHeight / 2 - 60, "Welcome to Paddle Game");
+    setcolor(13);
+    outtextxy(screenWidth / 2 - 160, screenHeight / 2 - 60, "Welcome to Pong Game");
     outtextxy(screenWidth / 2 - 160, screenHeight / 2, "Press any key to start");
+    outtextxy(screenWidth / 2 - 160, screenHeight / 2 + 60, "Press 'Q' to quit");
+    
+    char highScoreText[30];
+    sprintf(highScoreText, "High Score: %d", highScore);
+    outtextxy(screenWidth / 2 - 160, screenHeight / 2 + 120, highScoreText);
 }
 
 // Draw the border
@@ -154,3 +181,24 @@ void drawBorder()
     rectangle(0, 0, screenWidth - 1, screenHeight - 1);
 }
 
+// Save the high score to a file
+void saveHighScore(int highScore)
+{
+    FILE* file = fopen("highscore.txt", "w");
+    if (file != NULL) {
+        fprintf(file, "%d", highScore);
+        fclose(file);
+    }
+}
+
+// Load the high score from a file
+int loadHighScore()
+{
+    int highScore = 0;
+    FILE* file = fopen("highscore.txt", "r");
+    if (file != NULL) {
+        fscanf(file, "%d", &highScore);
+        fclose(file);
+    }
+    return highScore;
+}
