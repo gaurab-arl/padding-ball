@@ -2,7 +2,8 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdio.h>  // Include for file operations
+#include <stdio.h>
+#include <windows.h>  // For Beep function
 
 // Screen dimensions
 const int screenWidth = 640;
@@ -25,6 +26,7 @@ void showMainMenu(int highScore);
 void drawBorder();
 void saveHighScore(int highScore);
 int loadHighScore();
+void playHitSound(); // Function prototype for sound effect
 
 int main()
 {
@@ -86,6 +88,9 @@ int main()
             consecutiveHits++;
             isHovered = true; // Activate hover effect
 
+            // Play the hit sound effect
+            playHitSound();
+
             if (score % 5 == 0) {
                 level++;
                 ballSpeed += 2; // Increase speed each level
@@ -139,7 +144,7 @@ int main()
 // Draw the paddle
 void drawPaddle(int x)
 {
-    setfillstyle(SOLID_FILL, WHITE);
+    setfillstyle(SOLID_FILL, YELLOW); // Set the paddle color to yellow
     bar(x, screenHeight - paddleHeight, x + paddleWidth, screenHeight);
 }
 
@@ -201,4 +206,10 @@ int loadHighScore()
         fclose(file);
     }
     return highScore;
+}
+
+// Play a sound when the ball hits the paddle
+void playHitSound()
+{
+    Beep(1000, 100); // Play a sound at 1000 Hz for 100 milliseconds
 }
